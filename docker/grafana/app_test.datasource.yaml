@@ -1,0 +1,11 @@
+datasources:
+ - name: InfluxDB-App_Test
+   type: influxdb
+   access: proxy
+   url: http://influxdb:8086
+   database: app_test
+   user: app_test
+   password: password_test
+   is_default: false
+   version: 1
+   editable: true

@@ -1,0 +1,105 @@
+version: '2'
+services:
+  app:
+    build:
+      context: ./
+      dockerfile: ./docker/app.dockerfile
+    working_dir: /var/www
+    volumes:
+      - ./:/var/www
+    environment:
+      - "DB_PORT=3306"
+      - "DB_HOST=mysql"
+
+  nginx:
+    image: nginx:1.13
+    volumes:
+      - ./docker/nginx/app.conf.template:/etc/nginx/conf.d/app.conf.template
+    environment:
+      - "DOMAIN=project"
+    ports:
+      - 8080:80
+      - 8443:443
+    command: /bin/bash -c "envsubst '$$DOMAIN' < /etc/nginx/conf.d/app.conf.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"
+
+  mysql:
+    image: mysql:5.7
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./docker/mysql/setup.sh:/docker-entrypoint-initdb.d/setup.sh
+    environment:
+      - "MYSQL_DATABASE=app"
+      - "MYSQL_USER=app"
+      - "MYSQL_PASSWORD=password"
+      - "MYSQL_ROOT_PASSWORD=password"
+    ports:
+      - 33061:3306
+
+  redis:
+    image: 'redis:3.2'
+    ports:
+      - 63791:6379
+
+  mongo:
+    image: 'mongo:3.4'
+    ports:
+        - 57017:27017
+    volumes:
+        - 'mongo-data:/data/db'
+
+  memcached:
+    image: 'memcached:1.5'
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    links:
+      - mysql:db
+    ports:
+     - 8088:80
+    volumes:
+     - /sessions
+
+  influxdb:
+    image:  'influxdb:1.3'
+    ports:
+      - "8083:8083"
+      - "8086:8086"
+      - "8090:8090"
+    volumes:
+      - influxdb-data:/var/lib/influxdb
+      - ./docker/influxdb/setup.sh:/docker-entrypoint-initdb.d/setup.sh
+    environment:
+      - "INFLUXDB_DB=app"
+      - "INFLUXDB_ADMIN_USER=admin"
+      - "INFLUXDB_ADMIN_PASSWORD=admin"
+      - "INFLUXDB_USER=app"
+      - "INFLUXDB_USER_PASSWORD=password"
+
+  grafana:
+    image: grafana/grafana:master
+    ports:
+      - "3008:3000"
+    volumes:
+      - ./docker/grafana/app.datasource.yaml:/etc/grafana/provisioning/datasources/app.datasource.yaml
+      - ./docker/grafana/app_test.datasource.yaml:/etc/grafana/provisioning/datasources/app_test.datasource.yaml
+    links:
+      - influxdb
+
+#  selenium:
+#    build:
+#      context: ./
+#      dockerfile: docker/selenium.dockerfile
+#    ports:
+#      - 4444:4444
+#    links:
+#      - "web:abc.project.test"
+#      - "web:default.proect.test"
+#      - "web:some.project.test"
+#      - "web:other.project.test"
+#      - "web:one.project.test"
+#      - "web:two.project.test"
+
+volumes:
+  mysql-data: {}
+  mongo-data: {}
+  influxdb-data: {}
